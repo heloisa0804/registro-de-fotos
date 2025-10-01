@@ -28,7 +28,6 @@ export default function App() {
 
   const cameraRef = useRef<CameraView>(null);
 
-  // Carregar fotos salvas
   useEffect(() => {
     const loadGallery = async () => {
       const stored = await AsyncStorage.getItem("gallery");
@@ -76,7 +75,6 @@ export default function App() {
     setLocation(loc);
   }
 
-  // Salvar foto + descrição na galeria
   const saveToGallery = async () => {
     if (!photo) {
       Alert.alert("Erro", "Tire uma foto primeiro!");
@@ -93,7 +91,6 @@ export default function App() {
     setGallery(updatedGallery);
     await AsyncStorage.setItem("gallery", JSON.stringify(updatedGallery));
 
-    // Limpar campos
     setPhoto(null);
     setDescription("");
     Alert.alert("Sucesso", "Foto salva na galeria!");
@@ -160,7 +157,6 @@ export default function App() {
           )}
         </MapView>
 
-        {/* Galeria Horizontal */}
         <Text style={styles.subtitle}>Galeria</Text>
         <FlatList
           data={gallery}
@@ -187,6 +183,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f2f7fb",
   },
   title: {
+    paddingTop: 50,
     fontSize: 20,
     fontWeight: "bold",
     marginBottom: 16,
