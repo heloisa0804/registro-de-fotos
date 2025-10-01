@@ -11,7 +11,10 @@ import {
   View,
   Image,
   Alert,
+  FlatList,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ScrollView } from "react-native";
 
 export default function App() {
   const [facing, setFacing] = useState<CameraType>("back");
@@ -20,8 +23,19 @@ export default function App() {
   const [location, setLocation] = useState<Location.LocationObject | null>(
     null
   );
+  const [description, setDescription] = useState<string>("");
+  const [gallery, setGallery] = useState<any[]>([]);
 
   const cameraRef = useRef<CameraView>(null);
+
+  // Carregar fotos salvas
+  useEffect(() => {
+    const loadGallery = async () => {
+      const stored = await AsyncStorage.getItem("gallery");
+      if (stored) setGallery(JSON.parse(stored));
+    };
+    loadGallery();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -35,11 +49,8 @@ export default function App() {
     })();
   }, []);
 
-  if (!permission) {
-    return <View />;
-  }
-
-  if (!permission.granted) {
+  if (!permission) return <View />;
+  if (!permission.granted)
     return (
       <View style={styles.container}>
         <Text style={styles.message}>
@@ -48,7 +59,6 @@ export default function App() {
         <Button onPress={requestPermission} title="Dar permissão" />
       </View>
     );
-  }
 
   function toggleCameraFacing() {
     setFacing((current) => (current === "back" ? "front" : "back"));
@@ -66,61 +76,107 @@ export default function App() {
     setLocation(loc);
   }
 
+  // Salvar foto + descrição na galeria
+  const saveToGallery = async () => {
+    if (!photo) {
+      Alert.alert("Erro", "Tire uma foto primeiro!");
+      return;
+    }
+
+    const newItem = {
+      id: Date.now().toString(),
+      photo,
+      description: description || "Sem descrição",
+    };
+
+    const updatedGallery = [...gallery, newItem];
+    setGallery(updatedGallery);
+    await AsyncStorage.setItem("gallery", JSON.stringify(updatedGallery));
+
+    // Limpar campos
+    setPhoto(null);
+    setDescription("");
+    Alert.alert("Sucesso", "Foto salva na galeria!");
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>App 1 - Fotos de lugares visitados</Text>
+    <ScrollView>
+      <View style={styles.container}>
+        <Text style={styles.title}>App 1 - Fotos de lugares visitados</Text>
 
-      <View style={styles.photoBox}>
-        {photo ? (
-          <Image source={{ uri: photo }} style={styles.photo} />
-        ) : (
-          <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
-        )}
-      </View>
+        <View style={styles.photoBox}>
+          {photo ? (
+            <Image source={{ uri: photo }} style={styles.photo} />
+          ) : (
+            <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
+          )}
+        </View>
 
-      <TextInput
-        placeholder="Digite algo sobre a foto/local..."
-        style={styles.input}
-      />
+        <TextInput
+          placeholder="Digite algo sobre a foto/local..."
+          style={styles.input}
+          value={description}
+          onChangeText={setDescription}
+        />
 
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.btn} onPress={takePhoto}>
-          <Text style={styles.btnText}>Tirar Foto</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.btn} onPress={getLocation}>
-          <Text style={styles.btnText}>Localizar no mapa</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity style={styles.btn} onPress={takePhoto}>
+            <Text style={styles.btnText}>Tirar Foto</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.btn} onPress={getLocation}>
+            <Text style={styles.btnText}>Localizar no mapa</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.btn} onPress={saveToGallery}>
+            <Text style={styles.btnText}>Salvar na Galeria</Text>
+          </TouchableOpacity>
+        </View>
 
-      <MapView
-        style={styles.map}
-        region={
-          location
-            ? {
+        <MapView
+          style={styles.map}
+          region={
+            location
+              ? {
+                  latitude: location.coords.latitude,
+                  longitude: location.coords.longitude,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                }
+              : {
+                  latitude: -23.5505,
+                  longitude: -46.6333,
+                  latitudeDelta: 0.1,
+                  longitudeDelta: 0.1,
+                }
+          }
+        >
+          {location && (
+            <Marker
+              coordinate={{
                 latitude: location.coords.latitude,
                 longitude: location.coords.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }
-            : {
-                latitude: -23.5505,
-                longitude: -46.6333,
-                latitudeDelta: 0.1,
-                longitudeDelta: 0.1,
-              }
-        }
-      >
-        {location && (
-          <Marker
-            coordinate={{
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-            }}
-            title="Minha Localização"
-          />
-        )}
-      </MapView>
-    </View>
+              }}
+              title="Minha Localização"
+            />
+          )}
+        </MapView>
+
+        {/* Galeria Horizontal */}
+        <Text style={styles.subtitle}>Galeria</Text>
+        <FlatList
+          data={gallery}
+          keyExtractor={(item) => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginVertical: 10 }}
+          renderItem={({ item }) => (
+            <View style={styles.galleryItem}>
+              <Image source={{ uri: item.photo }} style={styles.galleryImage} />
+              <Text style={styles.galleryText}>{item.description}</Text>
+            </View>
+          )}
+        />
+      </View>
+    </ScrollView>
   );
 }
 
@@ -136,6 +192,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: "center",
     color: "#1e3a8a",
+  },
+  subtitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 12,
   },
   photoBox: {
     width: "100%",
@@ -190,15 +251,18 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   map: {
-    flex: 1,
     width: "100%",
-    marginTop: 12,
+    height: 250, // altura fixa, aumenta se quiser
     borderRadius: 12,
     overflow: "hidden",
+    marginTop: 12,
   },
   message: {
     textAlign: "center",
     paddingBottom: 10,
     color: "#475569",
   },
+  galleryItem: { marginRight: 10, alignItems: "center" },
+  galleryImage: { width: 100, height: 100, borderRadius: 8 },
+  galleryText: { fontSize: 12, marginTop: 4 },
 });
