@@ -237,6 +237,7 @@ const styles = StyleSheet.create({
     padding: 14,
     marginHorizontal: 6,
     alignItems: "center",
+    justifyContent: "center", // 🔹 garante centralização vertical
     borderRadius: 8,
     shadowColor: "#000",
     shadowOpacity: 0.15,
@@ -246,10 +247,11 @@ const styles = StyleSheet.create({
   btnText: {
     fontWeight: "bold",
     color: "#fff",
+    textAlign: "center", // 🔹 garante centralização do texto
   },
   map: {
     width: "100%",
-    height: 250, // altura fixa, aumenta se quiser
+    height: 250,
     borderRadius: 12,
     overflow: "hidden",
     marginTop: 12,
